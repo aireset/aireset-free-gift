@@ -16,6 +16,7 @@ class AiresetGiftRules {
         add_action('woocommerce_before_cart', [$this, 'check_cart_rules']);
         add_action('woocommerce_review_order_before_payment', [$this, 'check_cart_rules']);
         add_action('wp_enqueue_scripts', [$this, 'enqueue_assets']);
+        add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_assets']);
         add_action('wp_ajax_aireset_add_gift_to_cart', [$this, 'ajax_add_gift_to_cart']);
         add_action('wp_ajax_nopriv_aireset_add_gift_to_cart', [$this, 'ajax_add_gift_to_cart']);
     }
@@ -52,15 +53,25 @@ class AiresetGiftRules {
 
     public function render_rule_gifts($post) {
         $gifts = get_post_meta($post->ID, '_aireset_rule_gifts', true);
-        echo '<label>Produtos de brinde (SKU, ID ou nome separados por vírgula):</label><br />';
-        echo '<input type="text" name="aireset_rule_gifts" value="' . esc_attr($gifts) . '" style="width: 100%;" /><br /><br />';
+        $gift_ids = array_filter(array_map('absint', explode(',', $gifts)));
+        echo '<label>Produtos de brinde:</label><br />';
+        echo '<select id="aireset_rule_gifts" name="aireset_rule_gifts[]" multiple="multiple" style="width:100%" data-placeholder="Selecione produtos">';
+        foreach ($gift_ids as $id) {
+            $product = wc_get_product($id);
+            if ($product) {
+                echo '<option value="' . esc_attr($id) . '" selected="selected">' . esc_html($product->get_name()) . '</option>';
+            }
+        }
+        echo '</select><br /><br />';
     }
+
 
     public function save_rule_metabox($post_id, $post) {
         if ($post->post_type != 'aireset_gift_rule') return;
         update_post_meta($post_id, '_aireset_group_a', sanitize_text_field($_POST['aireset_group_a']));
         update_post_meta($post_id, '_aireset_group_b', sanitize_text_field($_POST['aireset_group_b']));
-        update_post_meta($post_id, '_aireset_rule_gifts', sanitize_text_field($_POST['aireset_rule_gifts']));
+        $gifts_input = isset($_POST['aireset_rule_gifts']) ? array_map('absint', (array) $_POST['aireset_rule_gifts']) : [];
+        update_post_meta($post_id, '_aireset_rule_gifts', implode(',', $gifts_input));
         update_post_meta($post_id, '_aireset_rule_message', sanitize_textarea_field($_POST['aireset_rule_message']));
     }
 
@@ -69,6 +80,12 @@ class AiresetGiftRules {
         wp_localize_script('aireset-gift-js', 'AiresetGiftAjax', [
             'ajax_url' => admin_url('admin-ajax.php'),
         ]);
+    }
+
+    public function enqueue_admin_assets() {
+        wp_enqueue_style("select2-css", plugin_dir_url(__FILE__) . "assets/select2.min.css", [], "4.1.0");
+        wp_enqueue_script("select2-js", plugin_dir_url(__FILE__) . "assets/select2.min.js", ["jquery"], "4.1.0", true);
+        wp_enqueue_script("aireset-admin-js", plugin_dir_url(__FILE__) . "js/admin.js", ["jquery", "select2-js"], "1.0", true);
     }
 
     private function match_product_in_cart($product_terms, $cart_items) {
