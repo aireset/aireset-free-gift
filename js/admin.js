@@ -1,10 +1,10 @@
 (function($){
     $(function(){
-        var productField = $('#aireset_rule_gifts');
-        if (productField.length) {
-            productField.select2({
+        function initProductSelect($el){
+            if(!$el.length) return;
+            $el.select2({
                 width: '100%',
-                placeholder: productField.data('placeholder') || 'Selecione produtos',
+                placeholder: $el.data('placeholder') || 'Selecione produtos',
                 allowClear: true,
                 ajax: {
                     url: ajaxurl,
@@ -29,5 +29,9 @@
                 }
             });
         }
+
+        initProductSelect($('#aireset_rule_gifts'));
+        initProductSelect($('#aireset_group_a'));
+        initProductSelect($('#aireset_group_b'));
     });
 })(jQuery);
